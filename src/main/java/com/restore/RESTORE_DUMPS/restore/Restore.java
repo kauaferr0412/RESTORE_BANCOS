@@ -1,7 +1,9 @@
 package com.restore.RESTORE_DUMPS.restore;
 
+import com.restore.RESTORE_DUMPS.util.ConfigUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -14,7 +16,10 @@ public class Restore {
     private final static Logger logger = LoggerFactory.getLogger(Restore.class);
 
     public static void createDatabase(String dbName) throws Exception {
-        try (Connection connection = DriverManager.getConnection("jdbc:postgresql://localhost:5432/", "postgres", "postgres");
+        String user = ConfigUtil.getProperty("pg.database.user");
+        String password = ConfigUtil.getProperty("pg.database.password");
+
+        try (Connection connection = DriverManager.getConnection("jdbc:postgresql://localhost:5432/", user, password);
              Statement statement = connection.createStatement()) {
             String sql = "DROP DATABASE IF EXISTS \"" + dbName + "\"";
             statement.executeUpdate(sql);
@@ -26,61 +31,61 @@ public class Restore {
     }
 
     public static void restoreDatabase(String dbName, String filePath) throws Exception {
-        try {
-            String senha = "postgres";
+        String user = ConfigUtil.getProperty("pg.database.user");
+        String password = ConfigUtil.getProperty("pg.database.password");
+        String pgRestorePath = ConfigUtil.getProperty("pg.restore.path");
 
-            String[] env = {"PGPASSWORD=" + senha};
+        if (pgRestorePath == null) {
+            throw new RuntimeException("ERRO: CAMINHO DO PG_RESTORE NÃO CONFIGURADO NO application.properties.");
+        }
 
-            String command = "\"C:/Program Files/PostgreSQL/15/bin/pg_restore.exe\"" +
-                    " -d " + dbName +
-                    " -U postgres" +
-                    " -h localhost" +
-                    " -c -v" +
-                    " \"" + filePath + "\"";
+        String[] envVars = {"PGPASSWORD=" + password};
+        String command = "\"" + pgRestorePath + "\"" +
+                " -d " + dbName +
+                " -U " + user +
+                " -h localhost" +
+                " -c -v" +
+                " \"" + filePath + "\"";
 
-            Process process = Runtime.getRuntime().exec(command, env);
+        Process process = Runtime.getRuntime().exec(command, envVars);
 
-            Thread stdOutThread = new Thread(() -> {
-                try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-                    reader.lines().forEach(System.out::println);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            });
-
-            Thread stdErrThread = new Thread(() -> {
-                try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
-                    reader.lines().forEach(System.err::println);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            });
-
-            stdOutThread.start();
-            stdErrThread.start();
-
-            int exitCode = process.waitFor();
-
-            stdOutThread.join();
-            stdErrThread.join();
-
-            if (exitCode == 0) {
-                logger.info("BANCO DE DADOS '" + dbName + "' RESTAURADO COM SUCESSO.");
-            } else {
-                throw new RuntimeException("FALHA AO RESTAURAR O BANCO DE DADOS '" + dbName + "'.");
+        Thread stdOutThread = new Thread(() -> {
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                reader.lines().forEach(System.out::println);
+            } catch (IOException e) {
+                e.printStackTrace();
             }
+        });
 
-        } catch (IOException | InterruptedException e) {
-            throw new RuntimeException("ERRO DURANTE O PROCESSO DE RESTAURAÇÃO DO BANCO DE DADOS '" + dbName + "'.", e);
+        Thread stdErrThread = new Thread(() -> {
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
+                reader.lines().forEach(System.err::println);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        });
+
+        stdOutThread.start();
+        stdErrThread.start();
+
+        int exitCode = process.waitFor();
+
+        stdOutThread.join();
+        stdErrThread.join();
+
+        if (exitCode == 0) {
+            logger.info("BANCO DE DADOS '" + dbName + "' RESTAURADO COM SUCESSO.");
+        } else {
+            throw new RuntimeException("FALHA AO RESTAURAR O BANCO DE DADOS '" + dbName + "'.");
         }
     }
 
-
     public static void createGlobalRole() {
-        String roleName = "bv_postgres";
-        String password = "postgres";
+        String roleName = ConfigUtil.getProperty("pg.superuser.role");
+        String user = ConfigUtil.getProperty("pg.database.user");
+        String password = ConfigUtil.getProperty("pg.database.password");
 
-        try (Connection connection = DriverManager.getConnection("jdbc:postgresql://localhost:5432/postgres", "postgres", "postgres");
+        try (Connection connection = DriverManager.getConnection("jdbc:postgresql://localhost:5432/postgres", user, password);
              Statement statement = connection.createStatement()) {
 
             String sqlCreateRole = "DO $$ BEGIN " +
@@ -96,5 +101,4 @@ public class Restore {
             logger.error("ERRO AO CRIAR A ROLE/LOGIN GLOBAL: " + e.getMessage());
         }
     }
-
 }
