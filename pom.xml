@@ -12,7 +12,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>2.6.3</version> <!-- Use a versão mais recente do Spring Boot -->
+		<version>2.6.3</version>
 	</parent>
 
 	<dependencies>
@@ -23,26 +23,25 @@
 			<version>1.4</version>
 		</dependency>
 
-		<!-- Dependência do Spring Boot Starter JDBC para acesso a bancos de dados -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-jpa</artifactId>
 		</dependency>
+
 		<!-- Dependência do PostgreSQL JDBC Driver -->
 		<dependency>
 			<groupId>org.postgresql</groupId>
 			<artifactId>postgresql</artifactId>
-			<version>42.2.5</version> <!-- Use a versão mais recente do driver PostgreSQL -->
+			<version>42.2.5</version>
 		</dependency>
 	</dependencies>
 
 	<properties>
-		<java.version>11</java.version> <!-- Use a versão do Java desejada -->
+		<java.version>11</java.version>
 	</properties>
 
 	<build>
 		<plugins>
-			<!-- Plugin do Spring Boot para empacotar o aplicativo -->
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>

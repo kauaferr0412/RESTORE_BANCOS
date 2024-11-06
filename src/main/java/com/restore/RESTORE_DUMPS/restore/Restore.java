@@ -2,9 +2,6 @@ package com.restore.RESTORE_DUMPS.restore;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.env.Environment;
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -13,9 +10,6 @@ import java.sql.DriverManager;
 import java.sql.Statement;
 
 public class Restore {
-
-    @Autowired
-    private static Environment env;
 
     private final static Logger logger = LoggerFactory.getLogger(Restore.class);
 
@@ -73,11 +67,34 @@ public class Restore {
             if (exitCode == 0) {
                 logger.info("BANCO DE DADOS '" + dbName + "' RESTAURADO COM SUCESSO.");
             } else {
-                throw new RuntimeException("Falha ao restaurar o banco de dados '" + dbName + "'.");
+                throw new RuntimeException("FALHA AO RESTAURAR O BANCO DE DADOS '" + dbName + "'.");
             }
 
         } catch (IOException | InterruptedException e) {
-            throw new RuntimeException("Erro durante o processo de restauração do banco de dados '" + dbName + "'.", e);
+            throw new RuntimeException("ERRO DURANTE O PROCESSO DE RESTAURAÇÃO DO BANCO DE DADOS '" + dbName + "'.", e);
         }
     }
+
+
+    public static void createGlobalRole() {
+        String roleName = "bv_postgres";
+        String password = "postgres";
+
+        try (Connection connection = DriverManager.getConnection("jdbc:postgresql://localhost:5432/postgres", "postgres", "postgres");
+             Statement statement = connection.createStatement()) {
+
+            String sqlCreateRole = "DO $$ BEGIN " +
+                    "IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = '" + roleName + "') THEN " +
+                    "CREATE ROLE " + roleName + " WITH SUPERUSER LOGIN PASSWORD '" + password + "' CREATEROLE CREATEDB INHERIT; " +
+                    "END IF; " +
+                    "END $$;";
+            statement.execute(sqlCreateRole);
+
+            logger.info("NOVA ROLE/LOGIN GLOBAL '" + roleName + "' CRIADA COM PRIVILÉGIOS DE SUPERUSER NO SERVIDOR.");
+
+        } catch (Exception e) {
+            logger.error("ERRO AO CRIAR A ROLE/LOGIN GLOBAL: " + e.getMessage());
+        }
+    }
+
 }
